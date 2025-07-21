@@ -9,12 +9,9 @@ const app = express();
 // Middleware
 const origin = process.env.NODE_ENV === 'production'
   ? 'https://grocery-frontend-bzg6.onrender.com'
-  : 'http://localhost:5173';
+  : 'http://localhost:5173/';
 
-app.use(cors({
-  origin,
-  credentials: true, // <-- THIS IS CRITICAL
-}));
+app.use(cors());
 
 app.use(express.json());
 
