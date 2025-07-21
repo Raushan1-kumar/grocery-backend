@@ -1,23 +1,23 @@
-const { db } = require('../config/firebase');
+const mongoose = require('mongoose');
 
-class Order {
-  static async create(data) {
-    return await db.collection('orders').add(data);
-  }
+const orderItemSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  name: { type: String, required: true },
+  qty: { type: Number, required: true },
+  price: { type: Number, required: true },
+});
 
-  static async getAll(status, page = 1, limit = 20) {
-    const start = (page - 1) * limit;
-    return await db.collection('orders')
-      .where('status', '==', status)
-      .orderBy('timestamp', 'desc')
-      .offset(start)
-      .limit(limit)
-      .get();
-  }
+const orderSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  items: [orderItemSchema],
+  total: { type: Number, required: true },
+  status: { type: String, enum: ['Processing', 'Delivered', 'Cancelled'], default: 'Processing' },
+  date: { type: Date, default: () => new Date() },
+  // Optional: Shipping address, payment method, etc.
+  // shippingAddress: String,
+  // paymentMethod: String,
+}, { timestamps: true });
 
-  static async updateStatus(id, status) {
-    return await db.collection('orders').doc(id).update({ status });
-  }
-}
+const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;

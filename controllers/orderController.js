@@ -1,63 +1,40 @@
-// const Order = require('../models/order');
-// const Product = require('../models/product');
+// ... (previous imports and createOrder, getUserOrders) ...
 
-// class OrderController {
-//   static async placeOrder(req, res) {
-//     try {
-//       const { customer, items } = req.body; // items: [{ product_id, quantity }]
+// @desc    Update order status (e.g., Cancel)
+// @route   PATCH /api/orders/:orderId
+// @access  Private
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const { userId } = req.user; // User making the request
 
-//       // Validate stock
-//       for (const item of items) {
-//         const product = await Product.getById(item.product_id);
-//         if (!product.exists || product.data().stock < item.quantity) {
-//           return res.status(400).json({ error: `Insufficient stock for ${item.product_id}` });
-//         }
-//       }
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
 
-//       // Create order
-//       const orderData = {
-//         customer,
-//         items,
-//         status: 'pending',
-//         timestamp: new Date()
-//       };
-//       const orderRef = await Order.create(orderData);
+    // Option 1: Only allow user to cancel their own order
+    if (order.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this order' });
+    }
+    // Option 2 (future): Allow admin to update any order (check isAdmin here)
 
-//       // Update stock
-//       const batch = db.batch();
-//       items.forEach(item => {
-//         const productRef = db.collection('products').doc(item.product_id);
-//         batch.update(productRef, { stock: firebase.firestore.FieldValue.increment(-item.quantity) });
-//       });
-//       await batch.commit();
+    // Only allow status to change to 'Cancelled' if currently 'Processing'
+    if (status === 'Cancelled' && order.status !== 'Processing') {
+      return res.status(400).json({ message: 'Cannot cancel a delivered or already cancelled order' });
+    }
 
-//       res.status(201).json({ order_id: orderRef.id });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
-//     }
-//   }
+    // You can add more validations here (e.g., only admin can mark as 'Delivered')
 
-//   static async getOrders(req, res) {
-//     try {
-//       const { status, page = 1, limit = 20 } = req.query;
-//       const snapshot = await Order.getAll(status, parseInt(page), parseInt(limit));
-//       const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-//       res.json(orders);
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
-//     }
-//   }
+    order.status = status;
+    await order.save();
 
-//   static async updateOrderStatus(req, res) {
-//     try {
-//       const { orderId } = req.params;
-//       const { status } = req.body; // e.g., 'pending', 'complete'
-//       await Order.updateStatus(orderId, status);
-//       res.json({ message: 'Order status updated' });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
-//     }
-//   }
-// }
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error updating order' });
+  }
+};
 
-// module.exports = OrderController;
+// ... (export updateOrderStatus)
+module.exports = { createOrder, getUserOrders, updateOrderStatus };
