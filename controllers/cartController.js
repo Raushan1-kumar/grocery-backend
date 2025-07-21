@@ -3,7 +3,7 @@ const Cart = require('../models/Cart');
 // 1. Add to cart (merge logic)
 exports.addToCart = async (req, res) => {
   const userId = req.user._id; // from auth middleware
-  const { productId, quantity, size, price } = req.body;
+  const { productId, quantity, size, price, productName, imageurl } = req.body;
   if (!productId || !quantity || !price) {
     return res.status(400).json({ message: 'Product ID, quantity, and price are required.' });
   }

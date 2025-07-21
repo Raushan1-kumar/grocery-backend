@@ -10,12 +10,12 @@ router.post('/add', auth, addToCart);
 router.get('/', auth, getCart);
 
 // Remove a product from cart
-router.delete('/cart/remove/:productId', auth, removeFromCart);
+router.delete('/remove/:productId', auth, removeFromCart);
 
 // Update cart item quantity or size (optional)
-router.put('/cart/update', auth, updateCartItem);
+router.put('/update', auth, updateCartItem);
 
 // Clear cart (for after order placed)
-router.delete('/cart/clear', auth, clearCart);
+router.delete('/clear', auth, clearCart);
 
 module.exports = router;

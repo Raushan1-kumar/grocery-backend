@@ -22,6 +22,9 @@ connectDB();
 app.use('/api/products', productRoutes);
 app.use('/api/cart', require('./routes/cartRoute'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.get('/for-cons',(req, res) => {
+  res.status(200).send('For consumers');
+});
 
 // Start server
 const PORT = process.env.PORT;
