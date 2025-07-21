@@ -7,7 +7,15 @@ const productRoutes = require('./routes/product');
 const app = express();
 
 // Middleware
-app.use(cors());
+const origin = process.env.NODE_ENV === 'production'
+  ? 'https://grocery-frontend-bzg6.onrender.com'
+  : 'http://localhost:5173';
+
+app.use(cors({
+  origin,
+  credentials: true, // <-- THIS IS CRITICAL
+}));
+
 app.use(express.json());
 
 // Connect to MongoDB
