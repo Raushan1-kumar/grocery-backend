@@ -22,7 +22,7 @@ exports.addToCart = async (req, res) => {
     existingItem.quantity += quantity; // increase qty
     existingItem.price = price; // update price if needed
   } else {
-    cart.items.push({ productId, quantity, size, price });
+    cart.items.push({ productId, quantity, size, price, productName, imageurl });
   }
   cart.updatedAt = Date.now();
   await cart.save();
