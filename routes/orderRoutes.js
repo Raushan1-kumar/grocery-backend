@@ -1,19 +1,23 @@
 const express = require('express');
-const { protect } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 const {
   createOrder,
   getUserOrders,
   updateOrderStatus,
+  updateOrderItems,
+  deleteOrder,
 } = require('../controllers/orderController');
-
 const router = express.Router();
 
 router.route('/')
-  .post(protect, createOrder)
-  .get(protect, getUserOrders);
+  .post(auth, createOrder)
+  .get(auth, getUserOrders);
 
-// Update order status (e.g., Cancel)
 router.route('/:orderId')
-  .patch(protect, updateOrderStatus); // Use PATCH for partial updates
+  .patch(auth, updateOrderStatus)
+  .delete(auth, deleteOrder);
+
+router.route('/:orderId/items')
+  .patch(auth, updateOrderItems);
 
 module.exports = router;

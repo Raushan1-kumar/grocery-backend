@@ -1,4 +1,38 @@
-// ... (previous imports and createOrder, getUserOrders) ...
+const Order = require('../models/order');
+
+// @desc    Create an order
+// @route   POST /api/orders
+// @access  Private
+const createOrder = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Items are required' });
+    }
+
+    const order = await Order.create({
+      user: req.user._id,
+      items,
+      status: 'Processing',
+    });
+
+    res.status(201).json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error creating order', error: err.message });
+  }
+};
+
+// @desc    Get user's orders
+// @route   GET /api/orders
+// @access  Private
+const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id }).sort('-createdAt');
+    res.json({ success: true, count: orders.length, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error fetching orders', error: err.message });
+  }
+};
 
 // @desc    Update order status (e.g., Cancel)
 // @route   PATCH /api/orders/:orderId
@@ -7,34 +41,128 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
-    const { userId } = req.user; // User making the request
+    const allowedStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Option 1: Only allow user to cancel their own order
-    if (order.userId.toString() !== userId.toString()) {
-      return res.status(403).json({ message: 'Not authorized to update this order' });
+    // Only the user who placed the order can cancel
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-    // Option 2 (future): Allow admin to update any order (check isAdmin here)
 
-    // Only allow status to change to 'Cancelled' if currently 'Processing'
+    // Only allow cancellation if order is Processing
     if (status === 'Cancelled' && order.status !== 'Processing') {
-      return res.status(400).json({ message: 'Cannot cancel a delivered or already cancelled order' });
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a delivered or already cancelled order'
+      });
     }
 
-    // You can add more validations here (e.g., only admin can mark as 'Delivered')
+    // Optional: Only admin can mark as Shipped/Delivered
+    // if (['Shipped', 'Delivered'].includes(status) && !req.user.isAdmin) {
+    //   return res.status(403).json({ success: false, message: 'Admin only' });
+    // }
 
     order.status = status;
     await order.save();
 
-    res.json(order);
+    res.json({ success: true, order });
   } catch (err) {
-    res.status(500).json({ message: 'Server error updating order' });
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
 
-// ... (export updateOrderStatus)
-module.exports = { createOrder, getUserOrders, updateOrderStatus };
+// @desc    Edit items in an order (add/remove/update quantity)
+// @route   PATCH /api/orders/:orderId/items
+// @access  Private
+const updateOrderItems = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action, itemId, productId, newQuantity } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Only the user who placed the order can edit
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Only allow editing if order is Processing
+    if (order.status !== 'Processing') {
+      return res.status(400).json({ success: false, message: 'Order cannot be modified after approved' });
+    }
+
+    // Action: update, remove, or add
+    if (action === 'update' && itemId && newQuantity) {
+      const item = order.items.id(itemId);
+      if (item) {
+        item.quantity = newQuantity;
+      } else {
+        return res.status(404).json({ success: false, message: 'Item not found' });
+      }
+    } else if (action === 'remove' && itemId) {
+      order.items = order.items.filter(item => item._id.toString() !== itemId);
+    } else if (action === 'add' && productId && newQuantity) {
+      // You'll need productName, price, imageUrl from your Product model
+      // For now, we just mock the required fields
+      order.items.push({
+        productName: 'Sample Product', // Replace with actual data
+        quantity: newQuantity,
+        price: 100, // Replace with actual data
+        size: null, // Replace if needed
+        imageUrl: '', // Replace with actual data
+      });
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid action or missing fields' });
+    }
+
+    await order.save();
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+// @desc    Delete (cancel) an order
+// @route   DELETE /api/orders/:orderId
+// @access  Private
+const deleteOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Only the user who placed the order can delete
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Only allow deletion if order is Processing
+    if (order.status !== 'Processing') {
+      return res.status(400).json({ success: false, message: 'Order cannot be cancelled' });
+    }
+
+    await order.deleteOne();
+    res.json({ success: true, message: 'Order cancelled' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+module.exports = {
+  createOrder,
+  getUserOrders,
+  updateOrderStatus,
+  updateOrderItems,
+  deleteOrder,
+};
