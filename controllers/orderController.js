@@ -15,7 +15,11 @@ const createOrder = async (req, res) => {
       items,
       status: 'Processing',
     });
+    // Emit socket event for new order
+    req.app.get('io').emit('orderPlaced', order);
+    console.log('🚀 SOCKET EMIT:', 'orderPlaced', order); 
 
+    
     res.status(201).json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error creating order', error: err.message });
@@ -41,6 +45,7 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
+    console.log(status, orderId);
     const allowedStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -64,20 +69,19 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Optional: Only admin can mark as Shipped/Delivered
-    // if (['Shipped', 'Delivered'].includes(status) && !req.user.isAdmin) {
-    //   return res.status(403).json({ success: false, message: 'Admin only' });
-    // }
-
     order.status = status;
+    console.log(status);
     await order.save();
+
+    // Emit socket event for order update (complete/cancel)
+    req.app.get('io').emit('orderUpdated', order);
+    console.log('🚀 SOCKET EMIT:', 'orderUpdated', order);
 
     res.json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
-
 // @desc    Edit items in an order (add/remove/update quantity)
 // @route   PATCH /api/orders/:orderId/items
 // @access  Private
@@ -126,6 +130,10 @@ const updateOrderItems = async (req, res) => {
     }
 
     await order.save();
+
+    req.app.get('io').emit('orderUpdated', order);
+    console.log('🚀 SOCKET EMIT:', 'orderUpdated', order);
+
     res.json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
@@ -159,9 +167,68 @@ const deleteOrder = async (req, res) => {
   }
 };
 
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().sort('-createdAt').populate('user', 'name number address email');
+    res.json({ success: true, count: orders.length, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+
+// @desc    Admin: Remove item from order
+// @route   DELETE /api/orders/admin/:orderId/items/:itemId
+// @access  Private/Admin
+const adminRemoveOrderItem = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Remove the item
+    order.items = order.items.filter(item => item._id.toString() !== itemId);
+
+    // Optional: Recalculate totalAmount if you store it
+    // order.totalAmount = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    await order.save();
+
+    req.app.get('io').emit('orderUpdated', order);
+    console.log('🚀 SOCKET EMIT:', 'orderUpdated', order);
+
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+const adminUpdateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    
+    order.status = status;
+    await order.save();
+      req.app.get('io').emit('orderUpdated', order);
+    console.log('🚀 SOCKET EMIT:', 'orderUpdated', order);
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
 module.exports = {
+  adminUpdateOrderStatus,
+  getAllOrders,
   createOrder,
   getUserOrders,
+  adminRemoveOrderItem,
   updateOrderStatus,
   updateOrderItems,
   deleteOrder,
