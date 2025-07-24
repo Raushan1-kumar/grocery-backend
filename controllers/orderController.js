@@ -5,26 +5,45 @@ const Order = require('../models/order');
 // @access  Private
 const createOrder = async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, shop } = req.body;
+
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Items are required' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Items are required' 
+      });
     }
 
-    const order = await Order.create({
+    // For staff orders, shop is set; for regular orders, it is null
+    const orderData = {
       user: req.user._id,
       items,
       status: 'Processing',
-    });
+      ...(shop?.id && { // If shop.id exists, include shop data
+        shop: {
+          id: shop.id,
+          name: shop.name,
+          address: shop.address
+        }
+      })
+    };
+
+    const order = await Order.create(orderData);
+
     // Emit socket event for new order
     req.app.get('io').emit('orderPlaced', order);
-    console.log('🚀 SOCKET EMIT:', 'orderPlaced', order); 
+    console.log('🚀 SOCKET EMIT:', 'orderPlaced', order);
 
-    
     res.status(201).json({ success: true, order });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error creating order', error: err.message });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error creating order', 
+      error: err.message 
+    });
   }
 };
+
 
 // @desc    Get user's orders
 // @route   GET /api/orders

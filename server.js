@@ -8,6 +8,7 @@ const productRoutes = require('./routes/product');
 const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const cartRoutes = require('./routes/cartRoute');
+const shopRoutes = require('./routes/shop');
 const app = express();
 
 // Middleware
@@ -43,6 +44,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/shops', shopRoutes);
 
 app.get('/for-cons', (req, res) => {
   res.status(200).send('For consumers');

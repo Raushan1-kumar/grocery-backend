@@ -29,6 +29,15 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  shop: {
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Shop',
+      default: null
+    },
+    name: String,         // Shop's name (from frontend data)
+    address: String       // Shop's address (from frontend data)
+  }
 });
 
 // Update timestamps on every save
