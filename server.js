@@ -22,7 +22,7 @@ app.use(cors());
 const server = http.createServer(app);
 const io = require('socket.io')(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "https://grocery-frontend-bzg6.onrender.com",
     methods: ["GET", "POST", "PATCH", "DELETE"],
     credentials: true
   }
