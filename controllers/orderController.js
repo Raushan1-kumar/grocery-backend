@@ -180,6 +180,8 @@ const deleteOrder = async (req, res) => {
     }
 
     await order.deleteOne();
+    req.app.get('io').emit('orderCancelled', order);
+    console.log('🚀 SOCKET EMIT:', 'orderCancelled', order);
     res.json({ success: true, message: 'Order cancelled' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
