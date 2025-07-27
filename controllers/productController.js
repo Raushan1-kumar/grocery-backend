@@ -1,5 +1,6 @@
 const Product = require('../models/product');
 const { uploadImage } = require('../config/cloudinary');
+const sharp = require('sharp');
 
 
 function normalizeCategory(category) {
@@ -13,6 +14,7 @@ const allowedCategories = [
   'household-cleaning','beverages', 'dry-fruits'
 ];
 
+
 exports.addProduct = async (req, res) => {
   try {
     let { category, productName, attributes, sizes } = req.body;
@@ -20,7 +22,13 @@ exports.addProduct = async (req, res) => {
 
     if (req.file) {
       try {
-        imageUrl = await uploadImage(req.file.buffer);
+        // Compress and resize image buffer with sharp before uploading
+        const compressedBuffer = await sharp(req.file.buffer)
+          .resize({ width: 800 })       // Resize width to max 800px (optional)
+          .jpeg({ quality: 30 })        // Compress JPEG quality 70 (adjust as needed)
+          .toBuffer();
+
+        imageUrl = await uploadImage(compressedBuffer);
       } catch (error) {
         return res.status(500).json({ message: 'Failed to upload image to Cloudinary', error: error.message });
       }
@@ -30,7 +38,6 @@ exports.addProduct = async (req, res) => {
     sizes = typeof sizes === "string" ? JSON.parse(sizes) : sizes;
     category = normalizeCategory(category);
 
-    // Optional check
     if (!allowedCategories.includes(category)) {
       return res.status(400).json({ message: 'Unsupported category' });
     }
@@ -49,6 +56,7 @@ exports.addProduct = async (req, res) => {
     res.status(500).json({ message: 'Error adding product', error: error.message });
   }
 };
+
 
 exports.getProductsByCategory = async (req, res) => {
   try {
