@@ -1,5 +1,6 @@
 const Product = require('../models/product');
-const { uploadImage } = require('../config/cloudinary');
+// const { uploadImage } = require('../config/cloudinary');
+const { uploadImage } = require('../config/imagekit');
 const sharp = require('sharp');
 
 
@@ -20,19 +21,40 @@ exports.addProduct = async (req, res) => {
     let { category, productName, attributes, sizes } = req.body;
     let imageUrl;
 
-    if (req.file) {
-      try {
-        // Compress and resize image buffer with sharp before uploading
-        const compressedBuffer = await sharp(req.file.buffer)
-          .resize({ width: 800 })       // Resize width to max 800px (optional)
-          .jpeg({ quality: 30 })        // Compress JPEG quality 70 (adjust as needed)
-          .toBuffer();
+    // if (req.file) {
+    //   try {
+    //     // Compress and resize image buffer with sharp before uploading
+    //     const compressedBuffer = await sharp(req.file.buffer)
+    //       .resize({ width: 800 })       // Resize width to max 800px (optional)
+    //       .jpeg({ quality: 30 })        // Compress JPEG quality 70 (adjust as needed)
+    //       .toBuffer();
 
-        imageUrl = await uploadImage(compressedBuffer);
-      } catch (error) {
-        return res.status(500).json({ message: 'Failed to upload image to Cloudinary', error: error.message });
-      }
-    }
+    //     imageUrl = await uploadImage(compressedBuffer);
+    //   } catch (error) {
+    //     return res.status(500).json({ message: 'Failed to upload image to Cloudinary', error: error.message });
+    //   }
+    // }
+
+
+
+if (req.file) {
+  try {
+    // Compress and resize image before uploading
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize({ width: 800 })     // Resize width to max 800px (adjust if needed)
+      .jpeg({ quality: 20 })      // Compress JPEG quality (0-100)
+      .toBuffer();
+
+    // Upload compressed image to ImageKit
+    imageUrl = await uploadImage(compressedBuffer, req.file.originalname);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to upload image to ImageKit',
+      error: error.message
+    });
+  }
+}
 
     attributes = typeof attributes === "string" ? JSON.parse(attributes) : attributes;
     sizes = typeof sizes === "string" ? JSON.parse(sizes) : sizes;
