@@ -20,7 +20,28 @@ const handleMulterError = (err, req, res, next) => {
   next(err);
 };
 
-router.post('/', upload.single('image'), handleMulterError, validateProduct, productController.addProduct);
-router.get('/:category', validateCategory, productController.getProductsByCategory);
+// Add product
+router.post(
+  '/',
+  upload.single('image'),
+  handleMulterError,
+  validateProduct,
+  productController.addProduct
+);
+
+// Get products by category
+router.get(
+  '/:category',
+  validateCategory,
+  productController.getProductsByCategory
+);
+
+// Edit product
+router.put(
+  '/:id',
+  upload.single('image'),
+  handleMulterError,
+  productController.editProduct
+);
 
 module.exports = router;

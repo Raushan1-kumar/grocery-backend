@@ -24,6 +24,7 @@ const orderSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+    index: { expires: '3d' }  // <-- TTL index (expire after 3 days)
   },
   updatedAt: {
     type: Date,
@@ -35,8 +36,8 @@ const orderSchema = new mongoose.Schema({
       ref: 'Shop',
       default: null
     },
-    name: String,         // Shop's name (from frontend data)
-    address: String       // Shop's address (from frontend data)
+    name: String,    // Shop's name (from frontend data)
+    address: String  // Shop's address (from frontend data)
   }
 });
 
